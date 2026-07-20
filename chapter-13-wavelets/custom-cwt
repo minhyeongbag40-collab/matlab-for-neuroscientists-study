@@ -1,1 +1,87 @@
+% my_cwt
+function cfs = my_cwt(t,x, motheraWavelet, maxWavelet, scales, params) 
+% 출력 = 함수이름(입력값들)
+
+% Inputs
+%   t             : Time vector
+%   x             : One-dimensional signal
+%   motherWavelet : Function handle, for example @my_morlet
+%   maxWavelet    : Normalized half-width of the wavelet support
+%   scales        : Positive scale values, measured in samples
+%   params        : Parameters passed to the mother wavelet
+%
+% Output
+%   cfs           : Complex CWT coefficients
+%                   rows    = scales
+%                   columns = time samples
+
+arguments
+    t double {mustBeVector, mustBeReal, mustBeFinite}
+    x doube {mustBeVector, mustBeFinite}
+    motheraWavelet (1,1) function_handle
+    maxWavelet (1,1) double {mustBePositive, mustBeFinite}
+    scales double {mustBeVector, mustBePositive, mustBeFinite}
+    params double = []
+end
+
+% Standardize orientation.
+t = t(:).';
+x = x(:).';
+scales = scales(:).';
+
+if numel(t) ~= numel(x)
+    error("my_cwt:SizeMismatch", ... ,
+        "t and x must contain the same number of elements.");
+end 
+
+if any(diff(t)  <= 0)
+    error("my_cwt:InvalidTime", ... , 
+        "t must be strictly increasing.");
+end 
+
+
+% Check approximatle uniform sampling.
+sampleIntervals = diff(t);
+medianInterval = median(sampleIntervals)'
+
+tolerance = 1e-6 * max(1, abs(medianInterval));
+
+if any(abs(sampleIntervals-medianInterval) > tolerance)
+    error("my_cwt:NonuniformSampling", ... ,
+        "This implementation requires uniformly sampled data.");
+end
+
+numScales = numel(scales);
+numSamples = numel(x);
+
+% complex coefficients
+cfs = complex(zeors(numScales, numSamples));
+
+for scaleIndex = 1:numScales
+
+    scale = scales(scaleIndex);
+
+    % Width of the scaled wavelet in samples.
+    halfwith = ceil(maxWavelet * scale);
+
+    % Normalized wavelet coordinates.
+    tau = (-halfWidth:halfWidth) / scale;
+
+     % L2-type scale normalization used in the textbook formulation.
+    wavelet = motherWavelet(tau, params) / sqrt(scale);
+
+    % CWT is a correlation with the conjugated analyzing wavelet.
+    kernel = conj(fliplr(wavelet));
+
+    % "same" replaces the fragile manual center trimming.
+    cfs(scaleIndex, :) = conv(x, kernel, "same");
+
+end
+end
+
+
+    
+
+
+
 
